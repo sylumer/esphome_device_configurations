@@ -1,0 +1,234 @@
+# Specify substitutions to allow easy name re-use
+substitutions:
+  device_name: espbuster
+  friendly_name: ESPBUSTER
+
+# Main config begins
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  project:
+    name: "sylumer.test_buddy"
+    version: "1.0.0"
+  # When everything is ready give a quick traffic light style light display to show readiness
+  on_boot:
+    priority: -100
+    then:
+      - light.turn_on:
+          id: rgb_led
+          brightness: 50%
+          red: 100%
+          green: 0%
+          blue: 0%
+      - delay: 1 s
+      - light.turn_on:
+          id: rgb_led
+          brightness: 50%
+          red: 100%
+          green: 74.9%
+          blue: 0%
+      - delay: 1 s
+      - light.turn_on:
+          id: rgb_led
+          brightness: 50%
+          red: 100%
+          green: 0%
+          blue: 0%
+      - delay: 0.25 s
+      - light.turn_on:
+          id: rgb_led
+          brightness: 50%
+          red: 0%
+          green: 100%
+          blue: 0%
+      - delay: 1 s
+      - light.turn_off: rgb_led
+
+esp32:
+  board: m5stack-atom
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+ota:
+  password: !secret ota_password
+
+# Wifi access - home and fallback
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${friendly_name} Fallback Hotspot
+    password: !secret ap_password
+
+# Portal
+captive_portal:
+
+# Define the IR LED
+# Should default to channel 0
+remote_transmitter:
+  - pin: GPIO12
+    carrier_duty_percent: 50%
+    id: ir_transmitter_led
+
+# Define the RGB LED
+# Explicitly set this to channel 3
+light:
+  - platform: esp32_rmt_led_strip
+    chipset: SK6812
+    rgb_order: GRB
+    pin: 27
+    num_leds: 1
+    rmt_channel: 3
+    id: rgb_led
+    name: ${friendly_name} RGB LED
+    effects:
+      - random:
+      - flicker:
+      - addressable_rainbow:
+      - strobe:
+      - flicker:
+          name: Broad Flicker
+          alpha: 95%
+          intensity: 10%
+      - addressable_rainbow:
+          name: Fast Rainbow
+          speed: 50
+      - strobe:
+          name: Traffic Light Strobe
+          colors:
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 0%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms
+            - state: true
+              brightness: 100%
+              red: 100%
+              green: 75%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms
+            - state: true
+              brightness: 100%
+              red: 0%
+              green: 100%
+              blue: 0%
+              duration: 500ms
+            - state: false
+              duration: 250ms
+
+# Define the button
+# Bounce the LED status as the button is pressed and again when released
+# We want Home Assistant to be setting the state. This is just an interaction
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 39
+      inverted: true
+    name: ${friendly_name} Button
+    on_multi_click:
+    - timing:
+        - ON for at most 1s
+        - OFF for at most 1s
+        - ON for at most 1s
+        - OFF for at least 0.2s
+      then:
+        - logger.log: \[Double Click\] Calling script.${device_name}_double_click ...
+        - homeassistant.service:
+              service: script.${device_name}_double_click
+    - timing:
+        - ON for 1s to 2s
+        - OFF for at least 0.5s
+      then:
+        - logger.log: \[Long Click\] Calling script.${device_name}_long_click ...
+        - homeassistant.service:
+              service: script.${device_name}_long_click
+    - timing:
+        - ON for at most 1s
+        - OFF for at least 0.5s
+      then:
+        - logger.log: \[Short Click\] Calling script.${device_name}_short_click ...
+        - homeassistant.service:
+              service: script.${device_name}_short_click
+
+# Sensors to make available in Home Assistant
+sensor:
+  # WiFi signal strength (RSSI) : dB
+  - platform: wifi_signal
+    name: "WiFi Signal Strength"
+    id: wifi_signal_db
+    update_interval: 60s
+    entity_category: diagnostic
+    icon: mdi:router-wireless
+
+# Other sensors
+text_sensor:
+  - platform: wifi_info
+    ip_address:
+      name: IP Address
+      id: host_ip
+      entity_category: diagnostic
+      icon: mdi:router-wireless
+    ssid:
+      name: SSID
+      id: ssid
+      icon: mdi:router-wireless
+    bssid:
+      name: BSSID
+      id: bssid
+      icon: mdi:router-wireless
+    mac_address:
+      name: MAC Address
+      id: mac_address
+      icon: mdi:router-wireless
+    scan_results:
+      name: WiFi Scan Results
+      id: wifi_scan
+      icon: mdi:router-wireless
+    dns_address:
+      name: DNS IP
+      id: dns
+      icon: mdi:router-wireless
+
+# Switch - SONY TV
+switch:
+  - platform: template
+    name: "Sony TV Power"
+    turn_on_action:
+      - remote_transmitter.transmit_sony:
+          data: 0xA90
+          nbits: 12
+
+  - platform: template
+    name: "Sony TV Sleep"
+    turn_on_action:
+      - remote_transmitter.transmit_sony:
+          data: 0x5d0
+          nbits: 12
+
+  - platform: template
+    name: "Sony TV Volume Up"
+    turn_on_action:
+      - remote_transmitter.transmit_sony:
+          data: 0x490
+          nbits: 12
+
+  - platform: template
+    name: "Sony TV Volume Down"
+    turn_on_action:
+      - remote_transmitter.transmit_sony:
+          data: 0xc90
+          nbits: 12

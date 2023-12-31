@@ -1,0 +1,238 @@
+# Substitutions for use elsewhere in content
+substitutions:
+  device_name: esptickermain
+  friendly_name: ESPTICKERMAIN
+
+# ESPHome
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  # On boot set the backlight to 60%
+  on_boot:
+    then:
+      - light.turn_on:
+          id: backlight
+          brightness: 60%
+
+# ESP32 Board
+esp32:
+  board: esp32-s3-devkitc-1
+  variant: esp32s3
+  framework:
+    type: arduino
+    
+# Enable logging
+logger: 
+  level: DEBUG
+  # Quieten the warnings about delays
+  logs:
+    tdisplays3.display: ERROR
+    component: ERROR
+
+# Load in component to allow use of the LCD screen
+external_components:
+  - source: github://landonr/lilygo-tdisplays3-esphome
+    components: [tdisplays3]
+
+ota:
+  password: !secret ota_password
+
+# Details of default Wifi and fallback hotspot
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Fallback Hotspot
+    password: !secret ap_password
+
+# No captive portal defined
+captive_portal:
+
+# Global variable set that could be used in the display, but is not actively in use
+globals:
+  - id: global_text
+    restore_value: no
+    type: std::string
+    initial_value: '"-- Awaiting Data --"'
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+  # Home Assistant service that can set the global variable
+  services:
+    - service: set_text
+      variables:
+        text_display: string
+      then:
+        - globals.set:
+            id: global_text
+            value: !lambda 'return text_display;'
+
+# Get the time from home assistant
+time:
+  - platform: homeassistant
+    id: ha_time
+
+# Set pin for backlight
+output:
+  - platform: ledc
+    pin: GPIO38
+    id: ledc_pmw
+    
+# Set backlight controller
+light:
+  - platform: monochromatic
+    output: ledc_pmw
+    name: "Backlight"
+    id: backlight
+    restore_mode: ALWAYS_OFF
+
+# Fonts
+font:
+  - file: "gfonts://Roboto"
+    id: roboto
+    size: 20
+  - file: "gfonts://Roboto"
+    id: robotosmall
+    size: 15
+
+# Ticker and IP Address sensors
+text_sensor:
+  - platform: homeassistant
+    id: ticker1_text
+    entity_id: input_text.ticker1_text
+  - platform: homeassistant
+    id: ticker1_colour
+    entity_id: input_select.ticker1_colour
+  - platform: homeassistant
+    id: ticker1_year
+    entity_id: input_datetime.ticker1_time
+    attribute: year
+  - platform: homeassistant
+    id: ticker1_month
+    entity_id: input_datetime.ticker1_time
+    attribute: month
+  - platform: homeassistant
+    id: ticker1_day
+    entity_id: input_datetime.ticker1_time
+    attribute: day
+  - platform: homeassistant
+    id: ticker1_hour
+    entity_id: input_datetime.ticker1_time
+    attribute: hour
+  - platform: homeassistant
+    id: ticker1_minute
+    entity_id: input_datetime.ticker1_time
+    attribute: minute
+  - platform: homeassistant
+    id: ticker1_second
+    entity_id: input_datetime.ticker1_time
+    attribute: second
+  - platform: homeassistant
+    id: ticker2_text
+    entity_id: input_text.ticker2_text
+  - platform: homeassistant
+    id: ticker2_colour
+    entity_id: input_select.ticker2_colour
+  - platform: homeassistant
+    id: ticker2_year
+    entity_id: input_datetime.ticker2_time
+    attribute: year
+  - platform: homeassistant
+    id: ticker2_month
+    entity_id: input_datetime.ticker2_time
+    attribute: month
+  - platform: homeassistant
+    id: ticker2_day
+    entity_id: input_datetime.ticker2_time
+    attribute: day
+  - platform: homeassistant
+    id: ticker2_hour
+    entity_id: input_datetime.ticker2_time
+    attribute: hour
+  - platform: homeassistant
+    id: ticker2_minute
+    entity_id: input_datetime.ticker2_time
+    attribute: minute
+  - platform: homeassistant
+    id: ticker2_second
+    entity_id: input_datetime.ticker2_time
+    attribute: second
+  - platform: wifi_info
+    ip_address:
+      name: ${device_name} IP Address
+      id: host_ip
+      entity_category: diagnostic
+      icon: mdi:router-wireless
+
+# 320 x 170 pixel display
+display:
+  - platform: tdisplays3
+    id: lcd
+    update_interval: 1s
+    rotation: 270
+    pages:
+      - id: page1
+        lambda: |-
+          //Base Colours
+          auto Black = Color(0, 0, 0);
+          auto DarkGrey = Color(105, 105, 105);
+          //Selection options
+          auto Red = Color(255, 0, 0);
+          auto White = Color(255, 255, 255);
+          auto Green = Color(0, 255, 0);
+          auto Cyan = Color(0, 255, 255);
+
+          //Build title bar
+          it.filled_rectangle(0, 0, 320, 25, DarkGrey);
+          it.printf(10, 5, id(robotosmall), White, id(ha_time).now().strftime("%Y-%m-%d %H:%M:%S").c_str());
+          it.printf(200, 5, id(robotosmall), White, "%15s", id(host_ip).state.c_str());
+
+          //Initialise colors as black so the output does not show
+          auto colour1 = Black;
+          auto colour2 = Black;
+
+          //Set colour for ticker 1 content
+          if(id(ticker1_colour).state == "Red") {colour1 = Red;}
+          if(id(ticker1_colour).state == "White") {colour1 = White;}
+          if(id(ticker1_colour).state == "Green") {colour1 = Green;}
+          if(id(ticker1_colour).state == "Cyan") {colour1 = Cyan;}
+
+          //Set colour for ticker 2 content
+          if(id(ticker2_colour).state == "Red") {colour2 = Red;}
+          if(id(ticker2_colour).state == "White") {colour2 = White;}
+          if(id(ticker2_colour).state == "Green") {colour2 = Green;}
+          if(id(ticker2_colour).state == "Cyan") {colour2 = Cyan;}
+
+          //it.printf(10, 60, id(roboto), White, "Local: %s", id(global_text).c_str());
+
+          //Display ticker contents
+          //Ticker entry 1
+          if(id(ticker1_text).state != "")
+          {
+            it.printf(10, 40, id(roboto), colour1, "%s-%02s-%02s-%02s.%02s.%02s", id(ticker1_year).state.c_str(), id(ticker1_month).state.c_str(), id(ticker1_day).state.c_str(), id(ticker1_hour).state.c_str(), id(ticker1_minute).state.c_str(), id(ticker1_second).state.c_str());
+            it.printf(10, 65, id(roboto), colour1, id(ticker1_text).state.c_str());
+          }
+          //Ticker entry 2
+          if(id(ticker2_text).state != "")
+          {
+            it.printf(10, 100, id(roboto), colour2, "%s-%02s-%02s-%02s.%02s.%02s", id(ticker2_year).state.c_str(), id(ticker2_month).state.c_str(), id(ticker2_day).state.c_str(), id(ticker2_hour).state.c_str(), id(ticker2_minute).state.c_str(), id(ticker2_second).state.c_str());
+            it.printf(10, 125, id(roboto), colour2, id(ticker2_text).state.c_str());
+          }
+
+# Push Buttons
+# 270 degree  screen rotation, so boot (GPIO0) is at the top.
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: 14
+      inverted: true
+    name: ${friendly_name} Bottom Button
+  - platform: gpio
+    pin:
+      number: 0
+      inverted: true
+    name: ${friendly_name} Top Button
