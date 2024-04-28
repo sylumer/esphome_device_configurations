@@ -1,0 +1,184 @@
+# Specify substitutions to allow easy name re-use
+substitutions:
+  device_name: espinfo
+  friendly_name: ESPINFO
+
+# Main config begins
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  project:
+    name: "sylumer.espinfo"
+    version: "1.0.0"
+
+# ESP32 definition
+esp32:
+  board: m5stack-atom
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Over the air
+ota:
+  password: !secret ota_password
+
+# Details of default Wifi and fallback hotspot
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: ${device_name} Fallback Hotspot
+    password: !secret ap_password
+
+# Portal
+captive_portal:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+# Generic Sensors
+sensor:
+  - platform: wifi_signal
+    id: wifi_value
+    name: ${device_name} WiFi Signal
+    icon: mdi:icon-strength-2
+
+# Binary Sensors
+binary_sensor:
+  - platform: gpio
+    name: "Main Button"
+    id: mainbutton
+    pin:
+      number: 39
+      inverted: true
+
+# Text Sensors
+text_sensor:
+  # LED Quadrants
+  - platform: homeassistant
+    id: info_quad1_colour
+    entity_id: input_select.info_quad1_colour
+  - platform: homeassistant
+    id: info_quad2_colour
+    entity_id: input_select.info_quad2_colour
+  - platform: homeassistant
+    id: info_quad3_colour
+    entity_id: input_select.info_quad3_colour
+  - platform: homeassistant
+    id: info_quad4_colour
+    entity_id: input_select.info_quad4_colour
+  # LED grid
+  - platform: homeassistant
+    id: info_grid
+    entity_id: input_text.info_grid
+  # WiFi IP Address
+  - platform: wifi_info
+    ip_address:
+      name: ${device_name} IP Address
+      id: host_ip
+      entity_category: diagnostic
+      icon: mdi:router-wireless
+
+# Lights
+light:
+  # LED Matrix as a strip
+  - platform: neopixelbus
+    type: GRB
+    variant: WS2812x
+    pin: 27
+    num_leds: 25
+    id: led_matrix_light
+    color_correct: [30%, 30%, 30%]
+    restore_mode: ALWAYS_OFF
+
+# Displays
+display:
+  # LED Matrix as an addressable grid
+  - platform: addressable_light
+    id: led_matrix_display
+    addressable_light_id: led_matrix_light
+    width: 5
+    height: 5
+    rotation: 0
+    update_interval: 16ms
+    lambda: |-
+      // Define available colours
+      Color Red = Color(0xFF0000);
+      Color Green = Color(0x00FF00);
+      Color Blue = Color(0x0000FF);
+      Color White = Color(0xFFFFFF);
+      Color Black = Color(0x000000);
+      Color Orange = Color(0xFFA500);
+      Color Yellow = Color(0xFFFF00);
+      Color Magenta = Color(0xFF00FF);
+      Color Cyan = Color(0x00FFFF);
+      Color Silver = Color(0xC0C0C0);
+
+      // Get the hexadecimal colour string from info_grid
+      std::string gridColorStr = id(info_grid).state.c_str();
+
+      // Convert the hexadecimal string to a 'Color' object
+      uint32_t gridColorValue;
+      sscanf(gridColorStr.c_str(), "%x", &gridColorValue);
+
+      // Define the colour 'Grid'
+      Color Grid = Color(gridColorValue);
+
+      // Set colour for quad 1
+      if(id(info_quad1_colour).state == "Red") {it.rectangle(0, 0, 2, 2, Red);}
+      if(id(info_quad1_colour).state == "Green") {it.rectangle(0, 0, 2, 2, Green);}
+      if(id(info_quad1_colour).state == "Blue") {it.rectangle(0, 0, 2, 2, Blue);}
+      if(id(info_quad1_colour).state == "White") {it.rectangle(0, 0, 2, 2, White);}
+      if(id(info_quad1_colour).state == "Black") {it.rectangle(0, 0, 2, 2, Black);}
+      if(id(info_quad1_colour).state == "Orange") {it.rectangle(0, 0, 2, 2, Orange);}
+      if(id(info_quad1_colour).state == "Yellow") {it.rectangle(0, 0, 2, 2, Yellow);}
+      if(id(info_quad1_colour).state == "Purple") {it.rectangle(0, 0, 2, 2, Magenta);}
+      if(id(info_quad1_colour).state == "Cyan") {it.rectangle(0, 0, 2, 2, Cyan);}
+      if(id(info_quad1_colour).state == "Grey") {it.rectangle(0, 0, 2, 2, Silver);}
+
+      // Set colour for quad 2
+      if(id(info_quad2_colour).state == "Red") {it.rectangle(3, 0, 2, 2, Red);}
+      if(id(info_quad2_colour).state == "Green") {it.rectangle(3, 0, 2, 2, Green);}
+      if(id(info_quad2_colour).state == "Blue") {it.rectangle(3, 0, 2, 2, Blue);}
+      if(id(info_quad2_colour).state == "White") {it.rectangle(3, 0, 2, 2, White);}
+      if(id(info_quad2_colour).state == "Black") {it.rectangle(3, 0, 2, 2, Black);}
+      if(id(info_quad2_colour).state == "Orange") {it.rectangle(3, 0, 2, 2, Orange);}
+      if(id(info_quad2_colour).state == "Yellow") {it.rectangle(3, 0, 2, 2, Yellow);}
+      if(id(info_quad2_colour).state == "Purple") {it.rectangle(3, 0, 2, 2, Magenta);}
+      if(id(info_quad2_colour).state == "Cyan") {it.rectangle(3, 0, 2, 2, Cyan);}
+      if(id(info_quad2_colour).state == "Grey") {it.rectangle(3, 0, 2, 2, Silver);}
+
+      // Set colour for quad 3
+      if(id(info_quad3_colour).state == "Red") {it.rectangle(0, 3, 2, 2, Red);}
+      if(id(info_quad3_colour).state == "Green") {it.rectangle(0, 3, 2, 2, Green);}
+      if(id(info_quad3_colour).state == "Blue") {it.rectangle(0, 3, 2, 2, Blue);}
+      if(id(info_quad3_colour).state == "White") {it.rectangle(0, 3, 2, 2, White);}
+      if(id(info_quad3_colour).state == "Black") {it.rectangle(0, 3, 2, 2, Black);}
+      if(id(info_quad3_colour).state == "Orange") {it.rectangle(0, 3, 2, 2, Orange);}
+      if(id(info_quad3_colour).state == "Yellow") {it.rectangle(0, 3, 2, 2, Yellow);}
+      if(id(info_quad3_colour).state == "Purple") {it.rectangle(0, 3, 2, 2, Magenta);}
+      if(id(info_quad3_colour).state == "Cyan") {it.rectangle(0, 3, 2, 2, Cyan);}
+      if(id(info_quad3_colour).state == "Grey") {it.rectangle(0, 3, 2, 2, Silver);}
+
+      // Set colour for quad 4
+      if(id(info_quad4_colour).state == "Red") {it.rectangle(3, 3, 2, 2, Red);}
+      if(id(info_quad4_colour).state == "Green") {it.rectangle(3, 3, 2, 2, Green);}
+      if(id(info_quad4_colour).state == "Blue") {it.rectangle(3, 3, 2, 2, Blue);}
+      if(id(info_quad4_colour).state == "White") {it.rectangle(3, 3, 2, 2, White);}
+      if(id(info_quad4_colour).state == "Black") {it.rectangle(3, 3, 2, 2, Black);}
+      if(id(info_quad4_colour).state == "Orange") {it.rectangle(3, 3, 2, 2, Orange);}
+      if(id(info_quad4_colour).state == "Yellow") {it.rectangle(3, 3, 2, 2, Yellow);}
+      if(id(info_quad4_colour).state == "Purple") {it.rectangle(3, 3, 2, 2, Magenta);}
+      if(id(info_quad4_colour).state == "Cyan") {it.rectangle(3, 3, 2, 2, Cyan);}
+      if(id(info_quad4_colour).state == "Grey") {it.rectangle(3, 3, 2, 2, Silver);}
+
+      // Draw grid
+      it.line(0, 2, 4, 2, Grid);
+      it.line(2, 0, 2, 4, Grid);
