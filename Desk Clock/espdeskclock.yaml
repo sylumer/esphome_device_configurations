@@ -91,7 +91,7 @@ sensor:
     entity_id: sensor.zthermo01_temperature
   - platform: homeassistant
     id: outside_temp
-    entity_id: sensor.iyork164_temperature
+    entity_id: sensor.iyork223_temperature
 
 # Set fonts
 font:
